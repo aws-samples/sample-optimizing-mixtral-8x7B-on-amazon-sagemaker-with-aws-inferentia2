@@ -1,11 +1,6 @@
-## My Project
+## Optimizing Mixtral 8x7B on Amazon SageMaker with AWS Inferentia2
 
-TODO: Fill this README out!
-
-Be sure to:
-
-* Change the title in this README
-* Edit your repository description on GitHub
+Instructions on how to run Mixtral 8x7B on Amazon Sagemaker with Inferentia2.
 
 ## Security
 

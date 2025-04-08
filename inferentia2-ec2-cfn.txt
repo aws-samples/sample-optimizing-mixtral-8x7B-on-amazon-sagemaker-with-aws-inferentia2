@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template to launch an Inferentia2 EC2 instance with SageMaker and IAM permissions'
+
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair.
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      "AMI": "ami-0f9a795e2d1186fe3"
+    us-west-2:
+      "AMI": "ami-0bede50341b2516c4"
+    # Add mappings for other regions as needed
+
+Resources:
+  EC2SageMakerIAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: EC2SageMakerIAMRole2
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+                - sagemaker.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+        - arn:aws:iam::aws:policy/IAMReadOnlyAccess
+      Path: "/"
+
+  EC2InstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref EC2SageMakerIAMRole
+
+  InferentiaSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Allow SSH access from the internet
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  InferentiaEC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: inf2.24xlarge
+      ImageId: !FindInMap [RegionMap, !Ref 'AWS::Region', AMI]
+      KeyName: !Ref KeyName
+      SecurityGroupIds: 
+        - !Ref InferentiaSecurityGroup
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: gp3
+            VolumeSize: 512
+      Tags:
+        - Key: Name
+          Value: My Inferentia2
+
+Outputs:
+  InstanceId:
+    Description: ID of the EC2 instance
+    Value: !Ref InferentiaEC2Instance
+  PublicDNS:
+    Description: Public DNS name of the EC2 instance
+    Value: !GetAtt InferentiaEC2Instance.PublicDnsName
+  PublicIP:
+    Description: Public IP address of the EC2 instance
+    Value: !GetAtt InferentiaEC2Instance.PublicIp
